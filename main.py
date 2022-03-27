@@ -19,6 +19,14 @@ def my_ai(gamestate: SnapshotData, my_data: typing.Dict) -> Command:
 	yHim = gamestate.other_players[0].position[1]
  
 	def moveTo(x,y):
+		if esquive() != -1:
+			projectile = gamestate.projectiles[esquive()]
+			lol = bool(random.getrandbits(1))
+			if lol:
+				print((projectile.speed[1]/300, -projectile.speed[0]/300,0.0))
+				return MoveCommand((projectile.speed[1]/300, -projectile.speed[0]/300,0.0))
+			else:
+				return MoveCommand((-projectile.speed[1]/300, projectile.speed[0]/300,0.0))
 		if y==yMe and x==xMe:
 			return ShootCommand(0.0)
 		if x==xMe:
@@ -54,22 +62,39 @@ def my_ai(gamestate: SnapshotData, my_data: typing.Dict) -> Command:
 				return "Center"
 			return "Middle"
 
-	"""def inDanger(projectile):
-		xPro = projectile.position[0]
-		yPro = projectile.position[1]
-		xSpeed = projectile.speed[0]
-		ySpeed = projectile.speed[1]
-		angle = (-math.copysign(1,xPro-xMe)*90+90)+arctan(ySpeed/xSpeed)*180/3.14
-		if (xMe - xPro)*(xMe - xPro)+(yMe - yPro)*(yMe - yPro) <36000 and angle > :
-			pass
-	  
-	def esquive():
-		for projectile in gamestate.projectiles:
-			if inDanger(projectile):
-				projectile.position
+	def inDanger(projectile):
+		if healthHim > 0 and healthMe >0:
+			xPro = projectile.position[0]
+			yPro = projectile.position[1]
+			xSpeed = projectile.speed[0]
+			ySpeed = projectile.speed[1]
+			if xSpeed !=0:
+				angleTir = (-math.copysign(1,xSpeed)*90+90)+arctan(ySpeed/xSpeed)*180/3.14
+			if (xPro-xMe)!=0:
+				angleMe = (-math.copysign(1,xPro-xMe)*90+90)+arctan((yMe-yPro)/(xPro-xMe+0.001))*180/3.14
+			if xSpeed==0:
+				angleTir = math.copysign(90,ySpeed)
+				angleMe = (-math.copysign(1,xPro-xMe)*90+90)+arctan((yMe-yPro)/(xPro-xMe+0.001))*180/3.14
 			else:
-				pass"""
-	
+				angleTir = math.copysign(90,ySpeed)+90
+				angleMe = (-math.copysign(1,xPro-xMe)*90+90)+arctan((yMe-yPro)/(xPro-xMe+0.001))*180/3.14
+			if angleTir<0:
+				angleTir+=360
+			if angleMe<0:
+				angleMe+=360
+			rayon_carré = (xMe - xPro)*(xMe - xPro)+(yMe - yPro)*(yMe - yPro)
+			if math.sqrt(rayon_carré) <72000 and abs(angleTir-angleMe) > 160 and abs(angleTir-angleMe) < 200:
+				return True
+			else:
+				return False
+		else:
+			return False
+		
+	def esquive():
+		for i in range(len(gamestate.projectiles)):
+			if inDanger(gamestate.projectiles[i]):
+				return i
+		return -1
 	
 	if my_data.get('first') is None:
 		if xMe < -20.0:
@@ -78,8 +103,9 @@ def my_ai(gamestate: SnapshotData, my_data: typing.Dict) -> Command:
 			my_data['first'] = 0
 	meCenter = zone(xMe, yMe) == "Center"
 	himCenter = zone(xHim, yHim) == "Center"
+	 
 	if healthHim < 0:
-		if scoreHim < scoreMe and not zone(xMe,yMe) == "CornerLeftAlmostUp" and not zone(xMe,yMe) == "CornerDownAlmostRight":
+		if scoreHim + 10 < scoreMe and not zone(xMe,yMe) == "CornerLeftAlmostUp" and not zone(xMe,yMe) == "CornerDownAlmostRight":
 			if zone(xMe,yMe) == "CornerUpRight":
 				if my_data.get('first') == 1:
 					return ShootCommand(-90)
