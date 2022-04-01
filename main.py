@@ -23,7 +23,6 @@ def my_ai(gamestate: SnapshotData, my_data: typing.Dict) -> Command:
 			projectile = gamestate.projectiles[esquive()]
 			lol = bool(random.getrandbits(1))
 			if lol:
-				print((projectile.speed[1]/300, -projectile.speed[0]/300,0.0))
 				return MoveCommand((projectile.speed[1]/300, -projectile.speed[0]/300,0.0))
 			else:
 				return MoveCommand((-projectile.speed[1]/300, projectile.speed[0]/300,0.0))
@@ -153,7 +152,94 @@ def my_ai(gamestate: SnapshotData, my_data: typing.Dict) -> Command:
 	return ShootCommand(45.0)
 
 def idle_ai(gamestate: SnapshotData, my_data: typing.Dict) -> Command:
-	return MoveCommand((0.0, 1.0, 0.0))
+	scoreMe = gamestate.other_players[0].score
+	scoreHim = gamestate.controlled_player.score
+	healthMe = gamestate.other_players[0].health
+	healthHim = gamestate.controlled_player.health
+	xMe = gamestate.controlled_player.position[0]
+	yMe = gamestate.controlled_player.position[1]
+	xHim = gamestate.other_players[0].position[0]
+	yHim = gamestate.other_players[0].position[1]
+
+	def moveTo(position: str):
+		try:
+			position = positions(position)
+			positionX, positionY = position
+			if yMe>positionY-16 and yMe<positionY+16 and xMe>positionX-16 and xMe<positionX+16:
+				return ShootCommand((-math.copysign(1,xHim-xMe)*90+90)+arctan((yHim-yMe)/(xHim-xMe))*180/3.14)
+			elif positionX==xMe:
+				return MoveCommand((0.0,math.copysign(1.0,positionY-yMe),0.0))
+			elif positionY==yMe:
+				return MoveCommand((math.copysign(1.0,positionX-xMe),0.0,0.0))
+			return MoveCommand(((positionX-xMe)/math.sqrt((xMe-positionX)*(xMe-positionX)+(yMe-positionY)*(yMe-positionY)), 
+						(positionY-yMe)/math.sqrt((xMe-positionX)*(xMe-positionX)+(yMe-positionY)*(yMe-positionY)),0.0))
+		except:
+			return MoveCommand((0.0,0.0,0.0))
+			
+  
+	def zone(x,y):
+		"""This function returns the zone where the player is
+
+		Args:
+			x (float): x coordinate of the player
+			y (float): y coordinate of the player
+
+		Returns:
+			str: the name of zone where the player is.
+		RED ZONE(50x50): Spawn zone
+		GREEN ZONE(182x50): Safe Zone Behind Wall X
+		YELLOW ZONE(236x50): Exposed/Transition Zone X
+		BLUE ZONE(82x135): Combat Zone
+		ORANGE ZONE(50x182): Exposed/Transition Zone Y
+		PURPLE ZONE(182x50): Safe Zone Behind Wall Y
+		WHITE ZONE(200x200): Center Zone
+		BLACK ZONE: no zone
+		"""
+		if (y>225 and y<275) or (y<-225 and y>-275):
+			if (x>-275 and x<-225) or (x>225 and x<275):
+				return "Red"
+			elif (x>-225 and x<-43) or (x>43 and x<225):
+				return "Green"
+			elif (x>-43 and x<193) or (x>-193 and x<43):
+				return "Yellow"
+		elif (y>140 and y<275) or (y<-140 and y>-275):
+			if (x>193 and x<275) or (x>-275 and x<-193):
+				return "Blue"
+		elif (y<43 and y>-139) or (y<139 and y>-43):
+			if (x>-275 and x<225) or (x>225 and x<275):
+				return "Orange"
+		elif (y>43 and y<225) or (y>-225 and y<-43):
+			if (x>-275 and x<225) or (x>225 and x<275):
+				return "Purple"
+		elif x < 100 and x >-100 and y > -100 and y < 100:
+			return "White"
+		return "Black"
+
+	def positions(pos):
+		"""This function returns the coordinates of the strategic points in the game."""
+		pos_dict = {"A1_1":(250,250), "A1_2": (-250, -250),
+              "G1_1":(-165, 250), "G2_1": (-104, 250), "G1_2": (104, -250), "G2_2": (165, -250),
+              "Y1_1": (36, 250), "Y2_1": (115, 250), "Y1_2": (-36, -250), "Y2_2": (-115, -250),
+              "B1_1": (221, 230), "B2_1": (248, 185), "B1_2": (-221, -230), "B2_2": (-248, -185),
+              "O1_1": (-250, -18), "O2_1": (-250, -79), "O1_2": (250, 79), "O2_2": (250, 18),
+              "P1_1": (250, -165), "P2_1": (250, -104), "P1_2": (-250, 104), "P2_2": (-250, 165),
+              "W1_1": (75, 75), "W2_1": (-75, -75)}
+		return pos_dict[pos]
+	
+	if healthMe > 0:
+		if healthHim < 0:
+			return moveTo("W1_2")
+		else:
+			chance = bool(random.getrandbits(1))
+			if chance:
+				return moveTo('O1_2')
+			else:
+				return moveTo('O2_2')
+	else:
+		return moveTo("W1_1")
+
+		
+	
 
 
 if __name__ == '__main__':
@@ -166,7 +252,7 @@ if __name__ == '__main__':
 	second_agent_data = {}
 
 	simulation.set_first_agent('agent_0', my_ai, first_agent_data)
-	simulation.set_second_agent('agent_1', my_ai, second_agent_data)
+	simulation.set_second_agent('agent_1', idle_ai, second_agent_data)
 
 	simulation.start_round()
 
